@@ -16,7 +16,6 @@
 
 package com.klinker.android.send;
 
-import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
@@ -32,9 +31,7 @@ import android.os.Bundle;
 import android.os.Looper;
 import android.os.Parcelable;
 import android.telephony.SmsManager;
-import android.telephony.SmsMessage;
 import android.text.TextUtils;
-import android.widget.Toast;
 
 import com.android.mmms.MmsConfig;
 import com.android.mmms.dom.smil.parser.SmilXmlSerializer;
@@ -138,11 +135,12 @@ public class Transaction {
      *
      * @param message               is the message that you want to send
      * @param threadId              is the thread id of who to send the message to (can also be set to Transaction.NO_THREAD_ID)
+     * @param sim
      * @param sentMessageParcelable is the piece of data that will be retrieved when BroadcastReceiver is called for sent message
      * @param deliveredParcelable   is the piece of data that will be retrieved when BroadcastReceiver is called for delivered message
      */
     public void sendNewMessage(Message message, long threadId,
-                               Parcelable sentMessageParcelable, Parcelable deliveredParcelable) {
+                               int sim, Parcelable sentMessageParcelable, Parcelable deliveredParcelable) {
         this.saveMessage = message.getSave();
 
         // if message:
@@ -167,13 +165,13 @@ public class Transaction {
             if (!settings.getGroup()) {
                 // send individual MMS to each person in the group of addresses
                 for (String address : message.getAddresses()) {
-                    sendMmsMessage(message.getText(), new String[]{address}, message.getImages(), message.getImageTypes(), message.getImageNames(), message.getParts(), message.getSubject());
+                    sendMmsMessage(message.getText(), new String[]{address}, sim, message.getImages(), message.getImageTypes(), message.getImageNames(), message.getParts(), message.getSubject());
                 }
             } else {
-                sendMmsMessage(message.getText(), message.getAddresses(), message.getImages(), message.getImageTypes(), message.getImageNames(), message.getParts(), message.getSubject());
+                sendMmsMessage(message.getText(), message.getAddresses(), sim, message.getImages(), message.getImageTypes(), message.getImageNames(), message.getParts(), message.getSubject());
             }
         } else {
-            sendSmsMessage(message.getText(), message.getAddresses(), threadId, message.getDelay(),
+            sendSmsMessage(message.getText(), message.getAddresses(), threadId, message.getDelay(), sim,
                     sentMessageParcelable, deliveredParcelable);
         }
 
@@ -185,9 +183,10 @@ public class Transaction {
      *
      * @param message  is the message that you want to send
      * @param threadId is the thread id of who to send the message to (can also be set to Transaction.NO_THREAD_ID)
+     * @param sim      -1= no check, 0 = sim 1; 1 = sim2
      */
-    public void sendNewMessage(Message message, long threadId) {
-        this.sendNewMessage(message, threadId, new Bundle(), new Bundle());
+    public void sendNewMessage(Message message, long threadId, int sim) {
+        this.sendNewMessage(message, threadId, sim, new Bundle(), new Bundle());
     }
 
     /**
@@ -231,7 +230,7 @@ public class Transaction {
     }
 
     private void sendSmsMessage(String text, String[] addresses, long threadId, int delay,
-                                Parcelable sentMessageParcelable, Parcelable deliveredParcelable) {
+                                int sim, Parcelable sentMessageParcelable, Parcelable deliveredParcelable) {
         Log.v("send_transaction", "message text: " + text);
         Uri messageUri = null;
         int messageId = 0;
@@ -274,19 +273,6 @@ public class Transaction {
 
                 Log.v("send_transaction", "message id: " + messageId);
 
-                // set up sent and delivered pending intents to be used with message request
-                Intent sentIntent;
-                if (explicitSentSmsReceiver == null) {
-                    sentIntent = new Intent(SMS_SENT);
-                    BroadcastUtils.addClassName(context, sentIntent, SMS_SENT);
-                } else {
-                    sentIntent = explicitSentSmsReceiver;
-                }
-
-                sentIntent.putExtra("message_uri", messageUri == null ? "" : messageUri.toString());
-                sentIntent.putExtra(SENT_SMS_BUNDLE, sentMessageParcelable);
-                PendingIntent sentPI = PendingIntent.getBroadcast(
-                        context, messageId, sentIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 
                 Intent deliveredIntent;
                 if (explicitDeliveredSmsReceiver == null) {
@@ -301,9 +287,6 @@ public class Transaction {
                 PendingIntent deliveredPI = PendingIntent.getBroadcast(
                         context, messageId, deliveredIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 
-                ArrayList<PendingIntent> sPI = new ArrayList<PendingIntent>();
-                ArrayList<PendingIntent> dPI = new ArrayList<PendingIntent>();
-
                 String body = text;
 
                 // edit the body of the text if unicode needs to be stripped
@@ -315,77 +298,45 @@ public class Transaction {
                     body = settings.getPreText() + " " + body;
                 }
 
-                SmsManager smsManager = SmsManagerFactory.createSmsManager(settings);
-                Log.v("send_transaction", "found sms manager");
-
-                if (settings.getSplit()) {
-                    Log.v("send_transaction", "splitting message");
-                    // figure out the length of supported message
-                    int[] splitData = SmsMessage.calculateLength(body, false);
-
-                    // we take the current length + the remaining length to get the total number of characters
-                    // that message set can support, and then divide by the number of message that will require
-                    // to get the length supported by a single message
-                    int length = (body.length() + splitData[2]) / splitData[0];
-                    Log.v("send_transaction", "length: " + length);
-
-                    boolean counter = false;
-                    if (settings.getSplitCounter() && body.length() > length) {
-                        counter = true;
-                        length -= 6;
-                    }
-
-                    // get the split messages
-                    String[] textToSend = splitByLength(body, length, counter);
-
-                    // send each message part to each recipient attached to message
-                    for (int j = 0; j < textToSend.length; j++) {
-                        ArrayList<String> parts = smsManager.divideMessage(textToSend[j]);
-
-                        for (int k = 0; k < parts.size(); k++) {
-                            sPI.add(saveMessage ? sentPI : null);
-                            dPI.add(settings.getDeliveryReports() && saveMessage ? deliveredPI : null);
-                        }
-
-                        Log.v("send_transaction", "sending split message");
-                        sendDelayedSms(smsManager, address, parts, sPI, dPI, delay, messageUri);
-                    }
+                if (sim == -1){
+                    sendMorMessage(context, body, address, messageId, messageUri);
                 } else {
-                    Log.v("send_transaction", "sending without splitting");
-                    // send the message normally without forcing anything to be split
-                    ArrayList<String> parts = smsManager.divideMessage(body);
-
-                    for (int j = 0; j < parts.size(); j++) {
-                        sPI.add(saveMessage ? sentPI : null);
-                        dPI.add(settings.getDeliveryReports() && saveMessage ? deliveredPI : null);
-                    }
-
-                    if (Utils.isDefaultSmsApp(context)) {
-                        try {
-                            Log.v("send_transaction", "sent message");
-                            sendDelayedSms(smsManager, address, parts, sPI, dPI, delay, messageUri);
-                        } catch (Exception e) {
-                            // whoops...
-                            Log.v("send_transaction", "error sending message");
-                            Log.e(TAG, "exception thrown", e);
-
-                            try {
-                                ((Activity) context).getWindow().getDecorView().findViewById(android.R.id.content).post(new Runnable() {
-
-                                    @Override
-                                    public void run() {
-                                        Toast.makeText(context, "Message could not be sent", Toast.LENGTH_LONG).show();
-                                    }
-                                });
-                            } catch (Exception f) {
-                            }
-                        }
-                    } else {
-                        // not default app, so just fire it off right away for the hell of it
-                        smsManager.sendMultipartTextMessage(address, null, parts, sPI, dPI);
-                    }
+                    sendDualSim(context, body, address,sim, messageId, messageUri);
                 }
             }
+        }
+    }
+
+
+    private boolean sendDualSim(Context context, String body, String phoneNumber, int simSelected, int messageId, Uri messageUri) {
+        ArrayList<String> messageList = SmsManager.getDefault().divideMessage(body);
+        boolean sent;
+        if (messageList.size() > 1)
+            sent = SimUtil.sendMultipartTextSMS(context, simSelected, phoneNumber, null, messageList);
+        else
+            sent = SimUtil.sendSMS(context, simSelected, phoneNumber, null, body, messageId, messageUri);
+        return sent;
+    }
+
+    private boolean sendMorMessage(Context ctx, String body, String phoneNumber, int messageId, Uri messageUri) {
+        try {
+            Intent sentIntent = new Intent(SMS_SENT);
+            BroadcastUtils.addClassName(ctx, sentIntent, SMS_SENT);
+            sentIntent.putExtra("message_uri", messageUri == null ? "" : messageUri.toString());
+            PendingIntent sentPI = PendingIntent.getBroadcast(ctx, messageId, sentIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+            Intent deliveredIntent = new Intent(SMS_DELIVERED);
+            BroadcastUtils.addClassName(ctx, deliveredIntent, SMS_DELIVERED);
+            deliveredIntent.putExtra("message_uri", messageUri == null ? "" : messageUri.toString());
+            PendingIntent deliveredPI = PendingIntent.getBroadcast(
+                    ctx, messageId, deliveredIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+            SmsManager sms = SmsManager.getDefault(); // using android SmsManager
+
+            sms.sendTextMessage(phoneNumber, null, body, sentPI, deliveredPI); // adding number and text
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
         }
     }
 
@@ -431,7 +382,7 @@ public class Transaction {
         }
     }
 
-    private void sendMmsMessage(String text, String[] addresses, Bitmap[] image, String[] imageType, String[] imageNames, List<Message.Part> parts, String subject) {
+    private void sendMmsMessage(String text, String[] addresses, int sim, Bitmap[] image, String[] imageType, String[] imageNames, List<Message.Part> parts, String subject) {
         // merge the string[] of addresses into a single string so they can be inserted into the database easier
         String address = "";
 
