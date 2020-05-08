@@ -16,15 +16,16 @@
 
 package com.android.mms;
 
-import java.io.IOException;
+import android.content.Context;
+import android.content.res.XmlResourceParser;
 
-import com.klinker.android.send.R;
+import com.klinker.android.logger.Log;
+import com.tracker.mylibrary.R;
+
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
-import android.content.Context;
-import android.content.res.XmlResourceParser;
-import com.klinker.android.logger.Log;
+import java.io.IOException;
 
 public class MmsConfig {
     private static final String TAG = "MmsConfig";

@@ -38,7 +38,7 @@ import com.google.android.mms.pdu_alt.PduHeaders;
 import com.google.android.mms.pdu_alt.PduPersister;
 import com.klinker.android.logger.Log;
 import com.klinker.android.send.BroadcastUtils;
-import com.klinker.android.send.R;
+import com.tracker.mylibrary.R;
 
 public class RetryScheduler implements Observer {
     private static final String TAG = LogTag.TAG;

@@ -13,6 +13,7 @@ import android.telephony.cdma.CdmaCellLocation;
 import android.widget.Toast;
 
 import com.klinker.android.logger.Log;
+import com.tracker.mylibrary.R;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;

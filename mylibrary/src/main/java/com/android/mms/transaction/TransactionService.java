@@ -57,7 +57,7 @@ import com.google.android.mms.pdu_alt.PduParser;
 import com.google.android.mms.pdu_alt.PduPersister;
 import com.klinker.android.logger.Log;
 import com.klinker.android.send.BroadcastUtils;
-import com.klinker.android.send.R;
+import com.tracker.mylibrary.R;
 import com.klinker.android.send.Utils;
 
 import java.io.IOException;

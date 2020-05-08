@@ -24,9 +24,9 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Base64;
-import com.klinker.android.logger.Log;
 
-import com.klinker.android.send.R;
+import com.klinker.android.logger.Log;
+import com.tracker.mylibrary.R;
 
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Method;
