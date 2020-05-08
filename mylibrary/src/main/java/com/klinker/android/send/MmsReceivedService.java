@@ -9,24 +9,24 @@ import android.os.Build;
 import android.provider.Telephony;
 import android.telephony.SmsManager;
 
-import com.android.mms.service_alt.DownloadRequest;
-import com.android.mms.service_alt.MmsConfig;
-import com.android.mms.transaction.DownloadManager;
-import com.android.mms.transaction.HttpUtils;
-import com.android.mms.transaction.TransactionSettings;
-import com.android.mms.util.SendingProgressTokenManager;
-import com.google.android.mms.InvalidHeaderValueException;
-import com.google.android.mms.MmsException;
-import com.google.android.mms.pdu_alt.EncodedStringValue;
-import com.google.android.mms.pdu_alt.GenericPdu;
-import com.google.android.mms.pdu_alt.NotificationInd;
-import com.google.android.mms.pdu_alt.NotifyRespInd;
-import com.google.android.mms.pdu_alt.PduComposer;
-import com.google.android.mms.pdu_alt.PduHeaders;
-import com.google.android.mms.pdu_alt.PduParser;
-import com.google.android.mms.pdu_alt.PduPersister;
-import com.google.android.mms.pdu_alt.RetrieveConf;
-import com.google.android.mms.util_alt.SqliteWrapper;
+import com.android.mmms.service_alt.DownloadRequest;
+import com.android.mmms.service_alt.MmsConfig;
+import com.android.mmms.transaction.DownloadManager;
+import com.android.mmms.transaction.HttpUtils;
+import com.android.mmms.transaction.TransactionSettings;
+import com.android.mmms.util.SendingProgressTokenManager;
+import com.google.android.mmms.InvalidHeaderValueException;
+import com.google.android.mmms.MmsException;
+import com.google.android.mmms.pdu_alt.EncodedStringValue;
+import com.google.android.mmms.pdu_alt.GenericPdu;
+import com.google.android.mmms.pdu_alt.NotificationInd;
+import com.google.android.mmms.pdu_alt.NotifyRespInd;
+import com.google.android.mmms.pdu_alt.PduComposer;
+import com.google.android.mmms.pdu_alt.PduHeaders;
+import com.google.android.mmms.pdu_alt.PduParser;
+import com.google.android.mmms.pdu_alt.PduPersister;
+import com.google.android.mmms.pdu_alt.RetrieveConf;
+import com.google.android.mmms.util_alt.SqliteWrapper;
 import com.klinker.android.logger.Log;
 
 import java.io.File;
@@ -34,7 +34,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
-import static com.google.android.mms.pdu_alt.PduHeaders.STATUS_RETRIEVED;
+import static com.google.android.mmms.pdu_alt.PduHeaders.STATUS_RETRIEVED;
 import static com.klinker.android.send.MmsReceivedReceiver.EXTRA_FILE_PATH;
 import static com.klinker.android.send.MmsReceivedReceiver.EXTRA_LOCATION_URL;
 import static com.klinker.android.send.MmsReceivedReceiver.EXTRA_TRIGGER_PUSH;
@@ -144,7 +144,7 @@ public class MmsReceivedService extends IntentService {
          *         If an HTTP error code is returned, an IOException will be thrown.
          * @throws java.io.IOException if any error occurred on network interface or
          *         an HTTP error code(>=400) returned from the server.
-         * @throws com.google.android.mms.MmsException if pdu is null.
+         * @throws com.google.android.mmms.MmsException if pdu is null.
          */
         byte[] sendPdu(byte[] pdu, String mmscUrl) throws IOException, MmsException {
             return sendPdu(SendingProgressTokenManager.NO_TOKEN, pdu, mmscUrl);
@@ -158,7 +158,7 @@ public class MmsReceivedService extends IntentService {
          *         If an HTTP error code is returned, an IOException will be thrown.
          * @throws java.io.IOException if any error occurred on network interface or
          *         an HTTP error code(>=400) returned from the server.
-         * @throws com.google.android.mms.MmsException if pdu is null.
+         * @throws com.google.android.mmms.MmsException if pdu is null.
          */
         byte[] sendPdu(byte[] pdu) throws IOException, MmsException {
             return sendPdu(SendingProgressTokenManager.NO_TOKEN, pdu,
@@ -175,7 +175,7 @@ public class MmsReceivedService extends IntentService {
          *         If an HTTP error code is returned, an IOException will be thrown.
          * @throws java.io.IOException if any error occurred on network interface or
          *         an HTTP error code(>=400) returned from the server.
-         * @throws com.google.android.mms.MmsException if pdu is null.
+         * @throws com.google.android.mmms.MmsException if pdu is null.
          */
         private byte[] sendPdu(final long token, final byte[] pdu,
                                final String mmscUrl) throws IOException, MmsException {
@@ -187,7 +187,7 @@ public class MmsReceivedService extends IntentService {
                 throw new IOException("Cannot establish route: mmscUrl is null");
             }
 
-            if (com.android.mms.transaction.Transaction.useWifi(mContext)) {
+            if (com.android.mmms.transaction.Transaction.useWifi(mContext)) {
                 return HttpUtils.httpConnection(
                         mContext, token,
                         mmscUrl,
@@ -228,7 +228,7 @@ public class MmsReceivedService extends IntentService {
                         STATUS_RETRIEVED);
 
                 // Pack M-NotifyResp.ind and send it
-                if(com.android.mms.MmsConfig.getNotifyWapMMSC()) {
+                if(com.android.mmms.MmsConfig.getNotifyWapMMSC()) {
                     sendPdu(new PduComposer(mContext, notifyRespInd).make(), mContentLocation);
                 } else {
                     sendPdu(new PduComposer(mContext, notifyRespInd).make());
@@ -255,9 +255,9 @@ public class MmsReceivedService extends IntentService {
             byte[] tranId = mRetrieveConf.getTransactionId();
             if (tranId != null) {
                 // Create M-Acknowledge.ind
-                com.google.android.mms.pdu_alt.AcknowledgeInd acknowledgeInd = null;
+                com.google.android.mmms.pdu_alt.AcknowledgeInd acknowledgeInd = null;
                 try {
-                    acknowledgeInd = new com.google.android.mms.pdu_alt.AcknowledgeInd(
+                    acknowledgeInd = new com.google.android.mmms.pdu_alt.AcknowledgeInd(
                             PduHeaders.CURRENT_MMS_VERSION, tranId);
 
                     // insert the 'from' address per spec
@@ -265,7 +265,7 @@ public class MmsReceivedService extends IntentService {
                     acknowledgeInd.setFrom(new EncodedStringValue(lineNumber));
 
                     // Pack M-Acknowledge.ind and send it
-                    if(com.android.mms.MmsConfig.getNotifyWapMMSC()) {
+                    if(com.android.mmms.MmsConfig.getNotifyWapMMSC()) {
                         sendPdu(new PduComposer(mContext, acknowledgeInd).make(), mContentLocation);
                     } else {
                         sendPdu(new PduComposer(mContext, acknowledgeInd).make());
